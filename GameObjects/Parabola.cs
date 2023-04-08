@@ -1,6 +1,8 @@
 ﻿using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Content;
 using Microsoft.Xna.Framework.Graphics;
+using MonoGame.Extended;
+using MonoGame.Extended.Graphics;
 using Parabola.Core;
 using System;
 using System.Collections.Generic;
@@ -10,11 +12,14 @@ namespace Parabola.GameObjects;
 
 internal class Parabola : IMonoGame
 {
-    const string TextureName = "blue-circle-fadeout";
+    const string ParabolaTextureName = "blue-circle-fadeout";
+    const string ArrowTextureName = "blue-arrow";
+    const float sizeGrowth = 0.00125f;
 
     private readonly GraphicsDevice _graphicsDevice;
-    private Texture2D _texture;
-    const float sizeGrowth = 0.00125f;
+    private Texture2D _parabolaTexture;
+    private Texture2D _arrowTexture;
+    private float _arrowRadians = 0;
 
 
     /// <summary>
@@ -28,18 +33,66 @@ internal class Parabola : IMonoGame
         ToVector = to;
 
         // Might need to switch the coordinates depending on x vs y
+        bool flip = false;
         if (from.X > to.X)
         {
-            var a = to;
-            to = from;
-            from = a;
+            (from, to) = (to, from);    // Flip
+            flip = true;
         }
 
-        if (FromVector.Y < ToVector.Y)
-            Points = DefineUpwardsFacingParabola(from, to).ToList();
-        else
-            Points = DefineDownwardsFacingParabola(from, to).ToList();
+        var points = (FromVector.Y < ToVector.Y)
+            ? DefineUpwardsFacingParabola(from, to)
+            : DefineDownwardsFacingParabola(from, to);
+
+        if (flip) points = points.Reverse();
+        Points = points.ToList();
+
+        if (Points.Count > 1) 
+        {
+            var first = Points[^1];
+            var last = Points[^2];
+            _arrowRadians = last.AngleTo(first);
+        }
     }
+
+
+    public void LoadContent(ContentManager contentManager)
+    {
+        // Load the Textures
+        _parabolaTexture = contentManager.Load<Texture2D>(ParabolaTextureName);
+        _arrowTexture = contentManager.Load<Texture2D>(ArrowTextureName);
+    }
+
+    public void Update(GameTime gameTime)
+    {
+        // Do Nothing
+    }
+
+    public void Draw(SpriteBatch spriteBatch, GameTime gameTime, Rectangle viewPort)
+    {
+        // Determine the scale
+        int count = 0;
+        float scale = 0.33f;
+        float width;
+        Vector2 origin;
+        foreach (var v in Points)
+        {
+            width = (_parabolaTexture.Width * scale) / 2;
+            origin = new Vector2(-width, -width);
+            spriteBatch.Draw(_parabolaTexture, v - origin, null, Color.White, 0, origin, scale, SpriteEffects.None, 0);
+            scale += sizeGrowth;
+            if (scale > 1f) scale = 1f;
+            count++;
+        }
+
+        // Draw the arrow head
+        width = ((_arrowTexture.Width * scale) / 2);
+        origin = new Vector2(width, width);
+        _arrowRadians = -MathHelper.PiOver2 - MathHelper.PiOver4;       // Angle To isn't working
+        spriteBatch.Draw(_arrowTexture, ToVector + origin, null, Color.White, _arrowRadians, origin, scale, SpriteEffects.None, 0);
+    }
+
+    #region Parabola Methods
 
     /// <summary>
     /// If end.Y > start.Y
@@ -76,7 +129,7 @@ internal class Parabola : IMonoGame
                 yield return v;
             }
         }
-        System.Diagnostics.Debug.WriteLine(v);
+        //System.Diagnostics.Debug.WriteLine(v);
 
     }
 
@@ -98,49 +151,35 @@ internal class Parabola : IMonoGame
 
             if (y >= Math.Min(startY, endY) && y <= Math.Max(startY, endY))
             {
-                //spriteBatch.Draw(pixel, new Vector2(x, y), Color.Red);
                 yield return new Vector2((float)Math.Round(x, 0), (float)Math.Round(y, 0));
             }
         }
     }
-    // yield return new Vector2(x, y);
+    // yield return new Vector2((float)Math.Round(x, 0), (float)Math.Round(y, 0));
 
-    public void LoadContent(ContentManager contentManager)
-    {
-        // Load the Camera Point
-        _texture = contentManager.Load<Texture2D>(TextureName);
-    }
-
-    public void Update(GameTime gameTime)
-    {
-        // Do Nothing
-    }
-
-    public void Draw(SpriteBatch spriteBatch, GameTime gameTime, Rectangle viewPort)
-    {
-        // Determine the scale
-        int count = 0;
-        float scale = 0.33f;
-        foreach (var v in Points)
-        {
-            float width = (_texture.Width * scale) / 2;
-            Vector2 origin = new Vector2(-width, -width);
-            spriteBatch.Draw(_texture, v, null, Color.White, 0, origin, scale, SpriteEffects.None, 0);
-            scale += sizeGrowth;
-            if (scale > 1f) scale = 1f;
-            count++;
-            
-        }
-    }
+    #endregion
 
     #region Properties
 
     public Vector2 FromVector { get; init; }
     public Vector2 ToVector { get; init; }    
     public List<Vector2> Points { get; init; }
-
+    
     #endregion
 
+}
+
+internal static class Helper
+{
+    internal static float AngleTo(this Vector2 a, Vector2 b)
+    {
+        float dotProduct = Vector2.Dot(a, b);
+        float magnitude1 = a.Length();
+        float magnitude2 = b.Length();
+
+        float angleInRadians = (float)Math.Acos(dotProduct / (magnitude1 * magnitude2));
+        return angleInRadians;
+    }
 }
 
 
