@@ -39,6 +39,7 @@ namespace Parabola
                 Exit();
 
             // TODO: Add your update logic here
+            _parabola.Update(gameTime);
 
             base.Update(gameTime);
         }

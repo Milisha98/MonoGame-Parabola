@@ -12,8 +12,8 @@ namespace Parabola.GameObjects;
 
 internal class Parabola : IMonoGame
 {
-    const string ParabolaTextureName = "blue-circle-fadeout";
-    const string ArrowTextureName = "blue-arrow";
+    const string ParabolaTextureName = "circle";
+    const string ArrowTextureName = "arrow";
     const float sizeGrowth = 0.00125f;
 
     private readonly GraphicsDevice _graphicsDevice;
@@ -65,31 +65,38 @@ internal class Parabola : IMonoGame
 
     public void Update(GameTime gameTime)
     {
-        // Do Nothing
+        //_arrowRadians += MathHelper.ToRadians(1);
     }
 
     public void Draw(SpriteBatch spriteBatch, GameTime gameTime, Rectangle viewPort)
     {
         // Determine the scale
         int count = 0;
-        float scale = 0.33f;
+        float scale = 0.30f;
         float width;
         Vector2 origin;
         foreach (var v in Points)
         {
             width = (_parabolaTexture.Width * scale) / 2;
             origin = new Vector2(-width, -width);
-            spriteBatch.Draw(_parabolaTexture, v - origin, null, Color.White, 0, origin, scale, SpriteEffects.None, 0);
+            spriteBatch.Draw(_parabolaTexture, v - origin, null, Color.BlueViolet, 0, origin, scale, SpriteEffects.None, 0);
             scale += sizeGrowth;
             if (scale > 1f) scale = 1f;
             count++;
         }
 
+        DrawArrowHead(spriteBatch, scale);
+    }
+
+    private void DrawArrowHead(SpriteBatch spriteBatch, float scale)
+    {
         // Draw the arrow head
-        width = ((_arrowTexture.Width * scale) / 2);
-        origin = new Vector2(width, width);
-        _arrowRadians = -MathHelper.PiOver2 - MathHelper.PiOver4;       // Angle To isn't working
-        spriteBatch.Draw(_arrowTexture, ToVector + origin, null, Color.White, _arrowRadians, origin, scale, SpriteEffects.None, 0);
+        Vector2 origin = new (_arrowTexture.Width / 2, _arrowTexture.Height / 2);
+
+        // Find the Angle of the Arrow
+        _arrowRadians = Points[^2].AngleTo(Points.Last());
+
+        spriteBatch.Draw(_arrowTexture, Points[^1] + origin, null, Color.BlueViolet, _arrowRadians, origin, scale + 0.1f, SpriteEffects.None, 0);        
     }
 
     #region Parabola Methods
@@ -173,11 +180,10 @@ internal static class Helper
 {
     internal static float AngleTo(this Vector2 a, Vector2 b)
     {
-        float dotProduct = Vector2.Dot(a, b);
-        float magnitude1 = a.Length();
-        float magnitude2 = b.Length();
+        double x = b.X - a.X;
+        double y = b.Y - a.Y;
 
-        float angleInRadians = (float)Math.Acos(dotProduct / (magnitude1 * magnitude2));
+        float angleInRadians = (float)Math.Atan2(y, x);
         return angleInRadians;
     }
 }
